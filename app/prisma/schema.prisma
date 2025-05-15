@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//User Model ================================= 
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id              String            @id @default(cuid())
+  userId          Int?
+  name            String?           @default("")
+  email           String?           @unique
+  phone           String            @unique
+  age             Int?
+  gender          String?
+  savedAddresses  Address[] // Array of saved addresses
+  kycVerified     Boolean?          @default(false) // KYC verification status
+  profilePicture  String? // URL of the profile picture
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deviceId        String?
+  role            Role
+  deleted         Boolean           @default(false)
+  userInteraction UserInteraction[]
+  loginRecords    LoginRecord[]
+  pincode         Int?
+  balance         String               @default("0.00")
+  sellableBalance String               @default("0.00")
+}
+
+//Address Model ================================= 
+
+model Address {
+  id        String @id @default(cuid())
+  street    String
+  city      String
+  state     String
+  zip       String
+  phone     String
+  name      String
+  userPhone String
+  user      User   @relation(fields: [userPhone], references: [id])
+}
+
+//User Interactions Model ================================= 
+
+model UserInteraction {
+  id        String          @id @default(uuid())
+  user      User            @relation(fields: [userId], references: [id])
+  userId    String
+  type      InteractionType
+  metadata  Json // to store additional info like posterId, offerId, etc.
+  createdAt DateTime        @default(now())
+}
+
+enum InteractionType {
+  POSTER_CLICK
+  INITIATE_PAYMENT
+  OFFER_CLICK
+}
+
+//User Login records
+model LoginRecord {
+  id        String   @id @default(cuid()) // Unique ID for each login record
+  userId    String // Foreign key
+  user      User     @relation(fields: [userId], references: [id])
+  loginTime DateTime @default(now())
+  device    String?
+}
