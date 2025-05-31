@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { createJWT } from "../../utils/auth.js";
 import safeGoldAPI from "../../configs/safegoldApiConfig.js";
 import safeGoldApi from "../../configs/safegoldApiConfig.js";
+import { sendOtp, validateOtp } from "../../services/otpService.js";
 
 const prisma = new PrismaClient();
 
@@ -22,11 +23,14 @@ export const user_login_register = async (req, res) => {
       },
     });
 
+    const otp = await sendOtp(phone);
+
     if (existingUser) {
       return res.status(200).json({
         success: true,
         message: "User already exists",
         data: existingUser,
+        otp,
       });
     }
 
@@ -41,6 +45,7 @@ export const user_login_register = async (req, res) => {
       success: true,
       message: "User created successfully",
       data: newUser,
+      otp: otp,
     });
   } catch (error) {
     return res.status(500).json({
@@ -53,7 +58,7 @@ export const user_login_register = async (req, res) => {
 
 export const user_verify_otp = async (req, res) => {
   try {
-    const { phone, otp, deviceId } = req.body;
+    const { phone, otp, deviceId, verificationId } = req.body;
 
     if (!phone || !otp || !deviceId) {
       return res.status(403).json({
@@ -62,7 +67,9 @@ export const user_verify_otp = async (req, res) => {
       });
     }
 
-    if (otp == "1234") {
+    const otpValidation = await validateOtp(phone, otp, verificationId);
+
+    if (!otpValidation) {
       return res.status(401).json({
         success: false,
         message: "Invalid OTP",
@@ -114,7 +121,7 @@ export const user_verify_otp = async (req, res) => {
       data: existingUser,
     });
   } catch (error) {
-    console.log(Error(error));
+    console.log(error);
     return res.status(500).json({
       error: error.message,
       success: false,

@@ -23,7 +23,8 @@ export async function getGoldBuyPrice(req, res) {
 export async function buyGoldVerify(req, res) {
   try {
     const { phone } = req.user;
-    const { priceType, value } = req.body;
+    const { gold_amount, buy_price, rate_id } = req.body;
+    console.log(req.body);
     if (!phone) {
       return res.status(400).json({
         success: false,
@@ -35,33 +36,35 @@ export async function buyGoldVerify(req, res) {
         phone: phone,
       },
     });
-    const buy_price = 0;
-    const GST_PERCENT = 0.03;
-    const price = await safeGoldApi.buyPrice();
-    const commissiom = 0.02;
-    const rateWithGST = +(
-      price.current_price *
-      (1 + GST_PERCENT + commissiom)
-    ).toFixed(2);
-    let gold_amount = 0;
-    if (priceType === "amount") {
-      // Scenario 1: Customer enters amount in Rupees
-      gold_amount = Math.floor((value / rateWithGST) * 10000) / 10000;
-      buy_price = value;
-    }
+    // const buy_price = 0;
+    // const GST_PERCENT = 0.03;
+    // const price = await safeGoldApi.buyPrice();
+    // const commissiom = 0.02;
+    // const rateWithGST = +(
+    //   price.current_price *
+    //   (1 + GST_PERCENT + commissiom)
+    // ).toFixed(2);
+    // let gold_amount = 0;
+    // if (priceType === "amount") {
+    //   // Scenario 1: Customer enters amount in Rupees
+    //   gold_amount = Math.floor((value / rateWithGST) * 10000) / 10000;
+    //   buy_price = value;
+    // }
 
-    if (priceType === "grams") {
-      // Scenario 2: Customer enters weight in grams
-      buy_price = parseFloat((inputValue * rateWithGST).toFixed(2));
-      gold_amount = value;
-    }
+    // if (priceType === "grams") {
+    //   // Scenario 2: Customer enters weight in grams
+    //   buy_price = parseFloat((inputValue * rateWithGST).toFixed(2));
+    //   gold_amount = value;
+    // }
 
     const buy = await safeGoldApi.verifyBuyGold({
-      rate_id: price?.rate_id,
+      rate_id,
       gold_amount,
       buy_price,
       userId: user.userId,
     });
+
+    console.log(buy);
 
     return res.status(200).json({
       success: true,
@@ -136,9 +139,7 @@ export async function buyGoldStatus(req, res) {
       });
     }
 
-    const status = await safeGoldApi.buyStatus({
-      tx_id,
-    });
+    const status = await safeGoldApi.buyStatus(tx_id);
 
     return res.status(200).json({
       success: true,
@@ -165,9 +166,7 @@ export async function invoice(req, res) {
       });
     }
 
-    const invoice = await safeGoldApi.invoice({
-      tx_id,
-    });
+    const invoice = await safeGoldApi.invoice(tx_id);
 
     return res.status(200).json({
       success: true,

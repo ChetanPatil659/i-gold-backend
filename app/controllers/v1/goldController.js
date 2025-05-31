@@ -43,6 +43,8 @@ export async function fetchBalance(req, res) {
 
 export async function transactionHistory(req, res) {
   try {
+    console.log("transaction");
+
     const { phone } = req.user;
     if (!phone) {
       return res.status(400).json({
@@ -57,12 +59,7 @@ export async function transactionHistory(req, res) {
     });
     const history = await safeGoldApi.transactions(user.userId);
 
-    if (!history || !history.id) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
+    console.log("history", history);
 
     return res.status(200).json({
       success: true,

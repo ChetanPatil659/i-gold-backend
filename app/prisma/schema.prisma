@@ -36,8 +36,8 @@ model User {
   userInteraction UserInteraction[]
   loginRecords    LoginRecord[]
   pincode         Int?
-  balance         String               @default("0.00")
-  sellableBalance String               @default("0.00")
+  balance         String            @default("0.00")
+  sellableBalance String            @default("0.00")
 }
 
 //Address Model ================================= 

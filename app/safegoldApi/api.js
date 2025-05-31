@@ -1,10 +1,49 @@
 import axios from "axios";
+import { decrypt } from "../utils/safeGold.js";
 
 class SafeGoldAPI {
   constructor({ baseUrl, accessToken }) {
     this.accessToken = `Bearer ${accessToken}`;
     this.baseUrl = `${baseUrl}/v1`;
     this.baseUrlV6 = `${baseUrl}/v6`;
+
+    // Create axios instance
+    this.axiosInstance = axios.create({
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        Authorization: this.accessToken,
+      },
+    });
+
+    // Add response interceptor to the instance
+    this.axiosInstance.interceptors.response.use(
+      (response) => {
+        if (response.data.data && typeof response.data.data === "string") {
+          try {
+            const decryptedData = decrypt(response.data.data);
+            response.data = JSON.parse(decryptedData);
+          } catch (error) {
+            console.log("Response decryption failed:", error);
+          }
+        }
+        return response;
+      },
+      (error) => {
+        if (
+          error.response.data.data &&
+          typeof error.response.data.data === "string"
+        ) {
+          try {
+            const decryptedData = decrypt(error.response.data.data);
+            error.data = JSON.parse(decryptedData);
+          } catch (error) {
+            console.log("error decryption failed:", error);
+          }
+        }
+        return error;
+      }
+    );
   }
 
   //1 - register API
@@ -13,15 +52,9 @@ class SafeGoldAPI {
       const options = {
         method: "POST",
         url: `${this.baseUrl}/users`,
-        headers: {
-          accept: "application/json",
-          Authorization: `Bearer 38778d59d5e17cfadc750e87703eb5e2`,
-          "content-type": "application/json",
-        },
         data: { name, mobile_no, pin_code },
       };
-      const response = await axios.request(options);
-      console.log("user registered successfully with safegold api");
+      const response = await this.axiosInstance.request(options);
       return response.data;
     } catch (error) {
       console.log(error, "error registering user");
@@ -34,13 +67,8 @@ class SafeGoldAPI {
       const options = {
         method: "GET",
         url: `${this.baseUrl}/users/${userId}`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("user balance fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -54,13 +82,8 @@ class SafeGoldAPI {
       const options = {
         method: "GET",
         url: `${this.baseUrl}/users/${userId}/transactions`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("user transactions fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -74,24 +97,16 @@ class SafeGoldAPI {
       const options = {
         method: "GET",
         url: `${this.baseUrlV6}/buy-price`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
 
       const data = {
-        current_price: (response.data.current_price + (response.data.current_price * ((response.data.applicable_tax + 2)/100))).toFixed(2),
+        current_price: response.data.current_price,
         applicable_tax: 3,
         rate_id: 74281334,
-        rate_validity: '2025-05-15 02:53:37'
-      }
-
-      console.log("buy price fetched successfully with safegold api", data);
-
-      return data;
+        rate_validity: "2025-05-15 02:53:37",
+      };
+      return response.data;
     } catch (error) {
       console.log(error, "error registering user");
     }
@@ -103,18 +118,13 @@ class SafeGoldAPI {
       const options = {
         method: "POST",
         url: `${this.baseUrl}/users/${userId}/buy-gold-verify`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
         data: { rate_id, gold_amount, buy_price },
       };
-      const response = await axios.request(options);
-      console.log("buy gold verify fetched successfully with safegold api");
+      const response = await this.axiosInstance.request(options);
       return response.data;
     } catch (error) {
-      console.log(error, "error registering user");
+      console.log(error, "error buy gold verify");
+      return error;
     }
   }
 
@@ -124,14 +134,9 @@ class SafeGoldAPI {
       const options = {
         method: "POST",
         url: `${this.baseUrl}/users/${userId}/buy-gold-confirm`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
         data: { tx_id, pincode },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("buy gold confirm fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -142,16 +147,13 @@ class SafeGoldAPI {
   //4
   async buyStatus(tx_id) {
     try {
+      console.log(this.baseUrl, "\n", tx_id);
+
       const options = {
         method: "GET",
         url: `${this.baseUrl}/buy-gold/${tx_id}/order-status`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("buy gold status fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -165,13 +167,8 @@ class SafeGoldAPI {
       const options = {
         method: "GET",
         url: `${this.baseUrl}/transactions/${tx_id}/fetch-invoice`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("buy gold invoice fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -185,13 +182,8 @@ class SafeGoldAPI {
       const options = {
         method: "GET",
         url: `${this.baseUrl}/sell-price`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell price fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -205,14 +197,9 @@ class SafeGoldAPI {
       const options = {
         method: "POST",
         url: `${this.baseUrl}/users/${userId}/sell-gold-verify`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
         data: { rate_id, gold_amount, sell_price },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold verify fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -226,14 +213,9 @@ class SafeGoldAPI {
       const options = {
         method: "POST",
         url: `${this.baseUrl}/users/${userId}/sell-gold-confirm`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
         data: { tx_id, pincode },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold confirm fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -247,13 +229,8 @@ class SafeGoldAPI {
       const options = {
         method: "GET",
         url: `${this.baseUrl}/sell-gold/${tx_id}/order-status`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold status fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -267,14 +244,9 @@ class SafeGoldAPI {
       const options = {
         method: "POST",
         url: `${this.baseUrl}/validate-pincode`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
         data: { pin_code },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold status fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -288,17 +260,12 @@ class SafeGoldAPI {
       const options = {
         method: "POST",
         url: `${this.baseUrl}/users/${userId}/redeem-gold-verify`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
         data: {
           product_code,
           address,
         },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold status fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -312,13 +279,8 @@ class SafeGoldAPI {
       const options = {
         method: "GET",
         url: `${this.baseUrl}/gold-products`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold status fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -338,11 +300,6 @@ class SafeGoldAPI {
       const options = {
         method: "POST",
         url: `${this.baseUrl}/users/${userId}/redeem-gold-confirm`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
         data: {
           tx_id,
           client_reference_id,
@@ -350,7 +307,7 @@ class SafeGoldAPI {
           date,
         },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold status fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -364,13 +321,8 @@ class SafeGoldAPI {
       const options = {
         method: "GET",
         url: `${this.baseUrl}/redeem-gold/${tx_id}/order-status`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold status fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -384,13 +336,8 @@ class SafeGoldAPI {
       const options = {
         method: "GET",
         url: `${this.baseUrl}/redeem-gold/${tx_id}/dispatch-status`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold status fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -404,14 +351,9 @@ class SafeGoldAPI {
       const options = {
         method: "POST",
         url: `${this.baseUrl}/users/${userId}/kyc-update`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
         data: { kyc_requirement: { pan_no, identity_no } },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold status fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -425,13 +367,8 @@ class SafeGoldAPI {
       const options = {
         method: "GET",
         url: `${this.baseUrl}/gold/historical-data?from_date=${from_date}&to_date=${to_date}`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold status fetched successfully with safegold api");
       return response.data;
     } catch (error) {
@@ -445,13 +382,8 @@ class SafeGoldAPI {
       const options = {
         method: "GET",
         url: `${this.baseUrl}/gold/historical?from_date=${from_date}&to_date=${to_date}&type=${type}`,
-        headers: {
-          accept: "application/json",
-          Authorization: this.accessToken,
-          "content-type": "application/json",
-        },
       };
-      const response = await axios.request(options);
+      const response = await this.axiosInstance.request(options);
       console.log("sell gold status fetched successfully with safegold api");
       return response.data;
     } catch (error) {
