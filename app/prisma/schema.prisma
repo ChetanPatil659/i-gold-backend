@@ -79,3 +79,19 @@ model LoginRecord {
   loginTime DateTime @default(now())
   device    String?
 }
+
+//Transaction Model =================================
+model Transaction {
+  id             String   @id @default(cuid())
+  type           String // "buy" or "sell"
+  txId           Int      @unique
+  rate           String
+  goldAmount     String
+  buyPrice       String
+  preGstBuyPrice String
+  gstAmount      Float
+  userId         Int
+  txDate         DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

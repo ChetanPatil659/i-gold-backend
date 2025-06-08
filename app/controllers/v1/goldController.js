@@ -74,3 +74,43 @@ export async function transactionHistory(req, res) {
     });
   }
 }
+
+export async function invoicePdf(req, res) {
+  try {
+    const { txId } = req.params;
+
+    // Fetch transaction details
+    const transaction = await prisma.transaction.findUnique({
+      where: { txId: parseInt(txId) },
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    // Fetch user details
+    const user = await prisma.user.findFirst({
+      where: { userId: transaction.userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Generate PDF
+    const pdfBuffer = await generateInvoicePDF(transaction, user);
+
+    // Set response headers
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=invoice-${txId}.pdf`
+    );
+
+    // Send PDF
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Error generating invoice PDF:", error);
+    res.status(500).json({ error: "Failed to generate invoice PDF" });
+  }
+}
